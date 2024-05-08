@@ -10,6 +10,8 @@
 */
 
 //windows
+#define BOOST_TYPEOF_EMULATION
+
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -28,22 +30,23 @@
 
 #include "ia_gror.h"
 #include "gror_pre.h"
-
-int main(int argc, char** argv) {
-
+#include"tezhen.h"
+int main() {
+	
 	//INPUT:
 	// 1. path to the source point cloud
-	std::string fnameS = argv[1];
+	std::string fnameS ="27.pcd";
 	// 2. path to the target point cloud
-	std::string fnameT = argv[2];
+	std::string fnameT = "28.pcd";
 	// 3. resolution threshold (default 0.1)
-	double resolution = atof(argv[3]);
+	double resolution = 1.5;
 	// 4. optimal threshold (default 800)
-	int n_optimal = atoi(argv[4]);
+	int n_optimal =200;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr origin_cloudS(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr origin_cloudT(new pcl::PointCloud<pcl::PointXYZ>);
 
 	//support pcd or ply
+
 	if (fnameS.substr(fnameS.find_last_of('.') + 1) == "pcd") {
 		pcl::io::loadPCDFile(fnameS, *origin_cloudS);
 		pcl::io::loadPCDFile(fnameT, *origin_cloudT);
@@ -79,7 +82,7 @@ int main(int argc, char** argv) {
 		viewerVGF->spin();
 	};
 
-	std::thread vis_thread([cloudS, cloudT, ShowVGFPointCloud]() {ShowVGFPointCloud(cloudS, cloudT); });
+	//std::thread vis_thread([cloudS, cloudT, ShowVGFPointCloud]() {ShowVGFPointCloud(cloudS, cloudT); });
 
 	auto t4 = std::chrono::system_clock::now();
 	pcl::registration::GRORInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, float> gror;
@@ -88,7 +91,7 @@ int main(int argc, char** argv) {
 	gror.setInputTarget(issT);
 	gror.setResolution(resolution);
 	gror.setOptimalSelectionNumber(n_optimal);
-	gror.setNumberOfThreads(1);
+	gror.setNumberOfThreads(6);
 	gror.setInputCorrespondences(corr);
 	gror.align(*pcs);
 	auto t5 = std::chrono::system_clock::now();
@@ -107,16 +110,16 @@ int main(int argc, char** argv) {
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr reg_cloud_S(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::transformPointCloud(*cloudS, *reg_cloud_S, gror.getFinalTransformation());
-	bool is_icp = 0;
+	bool is_icp =1;
 	if (is_icp)
 	{
 		pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 		icp.setInputSource(cloudS);
 		icp.setInputTarget(cloudT);
-		//icp.setMaxCorrespondenceDistance(0.1);
-		//icp.setTransformationEpsilon(1e-5);
-		//icp.setEuclideanFitnessEpsilon(0.1);
-		//icp.setMaximumIterations(100);
+		/*icp.setMaxCorrespondenceDistance(0.1);
+		icp.setTransformationEpsilon(1e-5);
+		icp.setEuclideanFitnessEpsilon(0.1);
+		icp.setMaximumIterations(100);*/
 		icp.setUseReciprocalCorrespondences(true);
 		icp.align(*reg_cloud_S, gror.getFinalTransformation());
 		std::cout << "transformation matrix after ICP: \n" << icp.getFinalTransformation() << std::endl;
@@ -145,5 +148,6 @@ int main(int argc, char** argv) {
 
 	ShowVGFPointCloud2(reg_cloud_S, cloudT);
 
-
+	/*pcl::io::savePCDFile("1017.pcd", *reg_cloud_S);
+	pcl::io::savePCDFile("1018.pcd", *cloudT);*/
 }
